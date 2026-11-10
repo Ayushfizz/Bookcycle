@@ -136,7 +136,12 @@ function filterBooks(){const q=document.getElementById('search').value.toLowerCa
 function category(c){document.getElementById('search').value=c;filterBooks();toast('Showing books matching '+c)}
 function navTo(n){document.querySelectorAll('.nav').forEach(b=>b.classList.remove('active'));if(window.event?.currentTarget)window.event.currentTarget.classList.add('active');if(n==='Account'){openAuth()}else if(n==='My Books'){if(!currentUser){openAuth();return}const mine=books.filter(b=>b.seller_id===currentUser.id);renderBooks(mine);toast('Showing your listings')}else if(n==='Category'){document.querySelector('.categories').scrollIntoView({behavior:'smooth'})}else if(n==='Home'){loadBooks()}}
 async function addBook(){if(!currentUser){toast('Please log in first.');return}const title=document.getElementById('newTitle').value.trim(),price=Number(document.getElementById('newPrice').value);if(!title||!price||price<=0){toast('Enter book name and a valid price.');return}let image_url=null;const file=document.getElementById('newPhoto').files[0];if(file){if(file.size>5*1024*1024){toast('Image must be 5 MB or smaller.');return}const ext=file.name.split('.').pop().toLowerCase(),path=`${currentUser.id}/${Date.now()}.${ext}`;const {error:upErr}=await db.storage.from('book-images').upload(path,file,{contentType:file.type,upsert:false});if(upErr){toast('Photo upload failed: '+upErr.message);return}image_url=db.storage.from('book-images').getPublicUrl(path).data.publicUrl}const row={title,author:document.getElementById('newAuthor').value.trim()||null,category:document.getElementById('newCategory').value.trim()||null,book_condition:document.getElementById('newCondition').value,price,description:document.getElementById('newDescription').value.trim()||null,image_url,seller_id:currentUser.id};const {error}=await db.from('books').insert(row);if(error){toast('Could not publish: '+error.message);return}closeSell();document.querySelectorAll('#sellModal input').forEach(x=>x.value='');await loadBooks();toast('Your book is now listed!')}
-db.auth.onAuthStateChange((_event,session)=>{currentUser=session?.user||null});
+db.auth.onAuthStateChange((event,session)=>{
+  currentUser=session?.user||null;
+  if(event==='SIGNED_IN'){
+    closeAuth();
+  }
+});
 refreshUser().then(loadBooks);
 </script>
 </body>
