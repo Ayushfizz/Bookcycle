@@ -1,117 +1,59 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#f4ecdc">
-<title>BookCycle — Read. Reuse. Repeat.</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-:root{
-  --cream:#f4ecdc;--paper:#fffaf0;--green:#234c3c;--green2:#376b52;
-  --gold:#d69a54;--ink:#292d27;--muted:#77766c;--line:#e7ddca;
-  --soft:#e8efdf;--shadow:0 8px 24px rgba(43,55,39,.09)
-}
-*{box-sizing:border-box} body{margin:0;background:#eee8dc;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
-.app{max-width:480px;min-height:100vh;margin:auto;background:var(--cream);padding-bottom:92px;overflow:hidden;box-shadow:0 0 35px #00000012}
-.top{padding:22px 18px 12px;background:linear-gradient(180deg,#f8f1e5,var(--cream))}
-.brandrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-.brand{display:flex;align-items:center;gap:9px;font-weight:850;font-size:21px;letter-spacing:-.7px;color:var(--green)}
-.logo{width:34px;height:34px;border-radius:11px;background:var(--green);color:#f9e9c9;display:grid;place-items:center;font-size:19px;box-shadow:0 4px 10px #234c3c35}
-.tag{font-size:10px;letter-spacing:1.5px;color:var(--muted);font-weight:700;margin-top:2px}
-.actions{display:flex;gap:10px}.round{width:38px;height:38px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;background:var(--paper);color:var(--green);font-size:17px}
-.search{height:50px;border:1px solid #e1d6c2;background:var(--paper);border-radius:15px;display:flex;align-items:center;padding:0 14px;gap:10px;box-shadow:0 3px 12px #5b4b3010}
-.search span{font-size:20px;color:var(--green)}.search input{border:0;outline:0;background:transparent;flex:1;min-width:0;font-size:14px;color:var(--ink)}.search button{border:0;background:none;color:var(--muted);font-size:19px}
-main{padding:8px 18px 24px}
-.section-head{display:flex;align-items:center;justify-content:space-between;margin:18px 0 13px}
-.heading{font-size:18px;font-weight:850;letter-spacing:-.5px;color:var(--green)}
-.location{border:1px solid #b7c5ad;background:#edf1e6;color:var(--green);border-radius:10px;padding:7px 9px;font-size:11px;font-weight:700}
-.arrow{border:0;background:none;color:var(--green);font-size:23px}
-.nearby{display:flex;gap:12px;overflow-x:auto;padding:2px 1px 13px;scrollbar-width:none}.nearby::-webkit-scrollbar{display:none}
-.book{min-width:148px;width:148px}.cover{height:184px;border-radius:16px;position:relative;overflow:hidden;display:flex;align-items:end;padding:12px;color:white;box-shadow:var(--shadow);background:linear-gradient(145deg,#d7a35d,#6d4530)}
-.cover:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,#161d18c9)}
-.cover .art{position:absolute;inset:0;display:grid;place-items:center;font-size:66px;opacity:.92}
-.cover .booktitle{position:relative;font-family:Georgia,serif;font-size:17px;font-weight:bold;line-height:1.05;text-shadow:0 2px 4px #0008}
-.heart{position:absolute;right:8px;top:8px;width:30px;height:30px;border:0;border-radius:50%;background:#fffdf0e8;color:var(--green);font-size:17px;z-index:2}
-.bookmeta{display:flex;justify-content:space-between;align-items:center;margin:8px 1px 5px}.price{font-weight:850;color:var(--green);font-size:15px}.distance{font-size:10px;font-weight:800;color:#356744;background:#e4eddb;padding:5px 7px;border-radius:20px}
-.bookname{font-size:12px;color:#5e5a50;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
-.categories{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.cat{height:104px;border-radius:15px;position:relative;overflow:hidden;border:1px solid #e2d6c1;display:flex;align-items:end;padding:10px;color:#fff;background:linear-gradient(145deg,#426b58,#1e3d31);box-shadow:0 5px 14px #234c3c18}
-.cat:nth-child(2){background:linear-gradient(145deg,#c18a4b,#6b492e)}.cat:nth-child(3){background:linear-gradient(145deg,#7e9270,#344d3b)}
-.cat:nth-child(4){background:linear-gradient(145deg,#b77b55,#654331)}.cat:nth-child(5){background:linear-gradient(145deg,#60765a,#263f32)}.cat:nth-child(6){background:linear-gradient(145deg,#b99b68,#68543b)}
-.cat .emoji{position:absolute;right:8px;top:8px;font-size:37px;opacity:.85}.cat b{position:relative;font-size:13px;text-shadow:0 2px 5px #0008}
-.banner{margin:22px 0 8px;border-radius:18px;min-height:130px;padding:19px;color:#f9f0dc;background:linear-gradient(115deg,#18392e,#315b42 65%,#8a633c);position:relative;overflow:hidden}
-.banner:after{content:"📚";position:absolute;right:15px;bottom:1px;font-size:72px;opacity:.38;transform:rotate(-9deg)}
-.banner small{letter-spacing:1.7px;font-weight:800;color:#e6c18a}.banner h2{font-family:Georgia,serif;font-size:23px;line-height:1.05;margin:8px 0 6px;max-width:220px}.banner p{font-size:11px;margin:0;color:#e9dfca}
-.section-sub{font-size:11px;color:var(--muted);margin-top:3px}
-.recent{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.mini{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;gap:9px;align-items:center}
-.miniart{width:48px;height:58px;border-radius:8px;display:grid;place-items:center;background:#e4d1ad;font-size:25px;flex:none}.mini b{font-size:11px;display:block}.mini small{font-size:10px;color:var(--muted)}
-.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(480px,100%);height:76px;background:#fffaf0f5;backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;padding:5px 6px max(8px,env(safe-area-inset-bottom));z-index:5}
-.nav{border:0;background:none;color:#8a887d;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;min-width:54px}.nav .ico{font-size:20px}.nav.active{color:var(--green);font-weight:850}
-.sell{width:56px;height:56px;border-radius:50%;border:4px solid var(--cream);background:var(--gold);color:#fff;font-size:29px;display:grid;place-items:center;margin-top:-27px;box-shadow:0 5px 14px #9c6a3335}
-.modal{display:none;position:fixed;inset:0;background:#17231dcc;z-index:10;align-items:end;justify-content:center}.modal.show{display:flex}.sheet{background:var(--paper);width:min(480px,100%);padding:22px;border-radius:22px 22px 0 0}.sheet h2{margin:0 0 14px;color:var(--green)}.sheet input,.sheet select{width:100%;padding:13px;margin:6px 0;border:1px solid var(--line);border-radius:11px;background:#fffdf8;font-size:14px}.primary{width:100%;border:0;border-radius:12px;background:var(--green);color:white;padding:14px;font-weight:800;margin-top:9px}
-.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--green);color:white;padding:10px 16px;border-radius:20px;font-size:12px;display:none;z-index:12}
-@media(min-width:520px){body{padding:18px 0}.app{border-radius:24px;min-height:calc(100vh - 36px)}.bottom{bottom:18px;border-radius:0 0 24px 24px}}
-</style>
-</head>
-<body>
-<div class="app">
-<header class="top">
- <div class="brandrow">
-  <div class="brand"><div class="logo">B</div><div>BookCycle<div class="tag">READ · REUSE · REPEAT</div></div></div>
-  <div class="actions"><button class="round" aria-label="Messages" onclick="toast('Buyer-seller messaging will be added in a later update.')">☰</button><button class="round" aria-label="Account" onclick="toast('Your account section is coming soon.')">♙</button></div>
- </div>
- <label class="search"><span>⌕</span><input id="search" placeholder="Search books, authors or exams..." oninput="filterBooks()"><button onclick="document.getElementById('search').value='';filterBooks()">✕</button></label>
-</header>
-<main>
- <section>
-  <div class="section-head"><div><div class="heading">Your nearby books</div><div class="section-sub">Good reads, closer to you</div></div><button class="location" onclick="toast('Nearby distance is not enabled yet. Showing all available books.')">⌖ Update location</button></div>
-  <div class="nearby" id="booklist"><p class="section-sub">Loading books…</p></div>
- </section>
- <section>
-  <div class="section-head"><div><div class="heading">Trending categories</div><div class="section-sub">Explore books by interest</div></div><button class="arrow" onclick="toast('All categories are shown below.')">→</button></div>
-  <div class="categories">
-   <div class="cat" onclick="category('IIT-JEE')"><span class="emoji">🚀</span><b>IIT-JEE</b></div>
-   <div class="cat" onclick="category('NEET')"><span class="emoji">🧬</span><b>NEET</b></div>
-   <div class="cat" onclick="category('School')"><span class="emoji">📚</span><b>School</b></div>
-   <div class="cat" onclick="category('Class 11–12')"><span class="emoji">🎓</span><b>Class 11–12</b></div>
-   <div class="cat" onclick="category('Novels')"><span class="emoji">🌿</span><b>Novels</b></div>
-   <div class="cat" onclick="category('Self-help')"><span class="emoji">🌄</span><b>Self-help</b></div>
-  </div>
- </section>
- <div class="banner"><small>PASS IT FORWARD</small><h2>Every book deserves another chapter.</h2><p>Sell a book. Share a little knowledge.</p></div>
- <section>
-  <div class="section-head"><div><div class="heading">Recently added</div><div class="section-sub">Fresh finds from the community</div></div><button class="arrow" onclick="toast('You are viewing the latest sample listings.')">→</button></div>
-  <div class="recent" id="recentList"><div class="mini"><div class="miniart">📚</div><div><b>Loading listings</b><small>From the BookCycle community</small></div></div></div>
- </section>
-</main>
-<nav class="bottom">
- <button class="nav active" onclick="navTo('Home')"><span class="ico">⌂</span>Home</button>
- <button class="nav" onclick="navTo('My Books')"><span class="ico">▤</span>My Books</button>
- <button class="nav" onclick="openSell()"><span class="sell">＋</span>Sell Now</button>
- <button class="nav" onclick="navTo('Category')"><span class="ico">▦</span>Category</button>
- <button class="nav" onclick="navTo('Account')"><span class="ico">♙</span>Account</button>
-</nav>
-</div>
-<div class="modal" id="sellModal" onclick="if(event.target===this)closeSell()"><div class="sheet"><h2>List a book for sale</h2><input id="newTitle" placeholder="Book name" required><input id="newAuthor" placeholder="Author (optional)"><input id="newCategory" placeholder="Subject / Class / Exam"><input id="newPrice" type="number" min="1" placeholder="Your price (₹)" required><select id="newCondition"><option>Like new</option><option>Very good</option><option>Good</option><option>Fair</option></select><input id="newDescription" placeholder="Description (optional)"><input id="newPhoto" type="file" accept="image/jpeg,image/png,image/webp"><button class="primary" onclick="addBook()">Publish listing</button></div></div>
-<div class="modal" id="authModal" onclick="if(event.target===this)closeAuth()"><div class="sheet"><h2>BookCycle account</h2><input id="authEmail" type="email" placeholder="Email address"><input id="authPassword" type="password" placeholder="Password (minimum 6 characters)"><button class="primary" onclick="login()">Log in</button><button class="primary" style="background:var(--gold)" onclick="signup()">Create account</button></div></div>
-<div class="toast" id="toast"></div>
 <script>
 const SUPABASE_URL='https://movzdlqzpsnytskkotlu.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_EDTEEDTZ-Uwq0uV2O_xInA_43QddtW8';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+
 let currentUser=null, books=[];
-function toast(msg){let t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.style.display='none',2800)}
-function safe(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function fav(btn){btn.textContent=btn.textContent==='♡'?'♥':'♡';btn.style.color=btn.textContent==='♥'?'#b44b3c':'var(--green)'}
+
+function toast(msg){
+  let t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.display='block';
+  clearTimeout(window.toastTimer);
+  window.toastTimer=setTimeout(()=>t.style.display='none',2800);
+}
+
+function safe(v){
+  return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fav(btn){
+  btn.textContent=btn.textContent==='♡'?'♥':'♡';
+  btn.style.color=btn.textContent==='♥'?'#b44b3c':'var(--green)';
+}
+
 function openAuth(){document.getElementById('authModal').classList.add('show')}
 function closeAuth(){document.getElementById('authModal').classList.remove('show')}
-function openSell(){if(!currentUser){toast('Please log in first to publish a book.');openAuth();return}document.getElementById('sellModal').classList.add('show')}
+
+function openSell(){
+  if(!currentUser){toast('Please log in first to publish a book.');openAuth();return}
+  document.getElementById('sellModal').classList.add('show');
+}
 function closeSell(){document.getElementById('sellModal').classList.remove('show')}
-async function refreshUser(){const {data}=await db.auth.getSession();currentUser=data.session?.user||null;}
-async function login(){const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||!password){toast('Enter email and password.');return}const {error}=await db.auth.signInWithPassword({email,password});if(error){toast(error.message);return}await refreshUser();closeAuth();toast('Logged in successfully.')}
-async function signup(){const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||password.length<6){toast('Enter email and a password of at least 6 characters.');return}const {error}=await db.auth.signUp({email,password,options:{emailRedirectTo:'https://ayushfizz.github.io/Bookcycle/'}});if(error){toast(error.message);return}toast('Account created. Check your email if confirmation is required.')}
+
+async function refreshUser(){
+  const {data}=await db.auth.getSession();
+  currentUser=data.session?.user||null;
+}
+
+async function login(){
+  const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;
+  if(!email||!password){toast('Enter email and password.');return}
+  const {error}=await db.auth.signInWithPassword({email,password});
+  if(error){toast(error.message);return}
+  await refreshUser();
+  closeAuth();
+  toast('Logged in successfully.');
+}
+
+async function signup(){
+  const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;
+  if(!email||password.length<6){toast('Enter email and a password of at least 6 characters.');return}
+  const {error}=await db.auth.signUp({email,password,options:{emailRedirectTo:'https://ayushfizz.github.io/Bookcycle/'}});
+  if(error){toast(error.message);return}
+  toast('Account created. Check your email if confirmation is required.');
+}
+
 function renderBooks(rows){
   const list = document.getElementById('booklist'), recent = document.getElementById('recentList');
   list.innerHTML = '';
@@ -157,15 +99,7 @@ function renderBooks(rows){
     }
   });
 }
-if(currentUser && currentUser.id===b.seller_id){
-const del=document.createElement('button');
-del.textContent='Delete Book';
-del.style.cssText='margin:10px;padding:8px 14px;background:#9b3434;color:white;border:0;border-radius:8px;cursor:pointer;';
-del.onclick=()=>deleteBook(b.id);
-card.appendChild(del);
-}
-list.appendChild(card);
-                                                                                                                                                                                                                                                                                                                                                                                                                                                       if(i<4){const mini=document.createElement('div');mini.className='mini';mini.innerHTML=`<div class="miniart">📘</div><div><b>${safe(b.title)}</b><small>${safe(b.category||'Book')} · ₹${Number(b.price).toLocaleString('en-IN')}</small></div>`;recent.appendChild(mini)}})}
+
 async function deleteBook(id){
   if(!currentUser) return;
   if(!confirm('Are you sure you want to delete this book?')) return;
@@ -174,18 +108,82 @@ async function deleteBook(id){
   toast('Book deleted successfully');
   await loadBooks();
 }
-  async function loadBooks(){const {data,error}=await db.from('books').select('*').order('created_at',{ascending:false});if(error){toast('Could not load books: '+error.message);document.getElementById('booklist').innerHTML='<p class="section-sub">Could not load listings. Please check database permissions.</p>';return}books=data||[];renderBooks(books)}
-function filterBooks(){const q=document.getElementById('search').value.toLowerCase().trim();const rows=books.filter(b=>[b.title,b.author,b.category,b.description].join(' ').toLowerCase().includes(q));renderBooks(rows)}
-function category(c){document.getElementById('search').value=c;filterBooks();toast('Showing books matching '+c)}
-function navTo(n){document.querySelectorAll('.nav').forEach(b=>b.classList.remove('active'));if(window.event?.currentTarget)window.event.currentTarget.classList.add('active');if(n==='Account'){openAuth()}else if(n==='My Books'){if(!currentUser){openAuth();return}const mine=books.filter(b=>b.seller_id===currentUser.id);renderBooks(mine);toast('Showing your listings')}else if(n==='Category'){document.querySelector('.categories').scrollIntoView({behavior:'smooth'})}else if(n==='Home'){loadBooks()}}
-async function addBook(){if(!currentUser){toast('Please log in first.');return}const title=document.getElementById('newTitle').value.trim(),price=Number(document.getElementById('newPrice').value);if(!title||!price||price<=0){toast('Enter book name and a valid price.');return}let image_url=null;const file=document.getElementById('newPhoto').files[0];if(file){if(file.size>5*1024*1024){toast('Image must be 5 MB or smaller.');return}const ext=file.name.split('.').pop().toLowerCase(),path=`${currentUser.id}/${Date.now()}.${ext}`;const {error:upErr}=await db.storage.from('book-images').upload(path,file,{contentType:file.type,upsert:false});if(upErr){toast('Photo upload failed: '+upErr.message);return}image_url=db.storage.from('book-images').getPublicUrl(path).data.publicUrl}const row={title,author:document.getElementById('newAuthor').value.trim()||null,category:document.getElementById('newCategory').value.trim()||null,book_condition:document.getElementById('newCondition').value,price,description:document.getElementById('newDescription').value.trim()||null,image_url,seller_id:currentUser.id};const {error}=await db.from('books').insert(row);if(error){toast('Could not publish: '+error.message);return}closeSell();document.querySelectorAll('#sellModal input').forEach(x=>x.value='');await loadBooks();toast('Your book is now listed!')}
+
+async function loadBooks(){
+  const {data,error}=await db.from('books').select('*').order('created_at',{ascending:false});
+  if(error){
+    toast('Could not load books: '+error.message);
+    document.getElementById('booklist').innerHTML='<p class="section-sub">Could not load listings. Please check database permissions.</p>';
+    return;
+  }
+  books=data||[];
+  renderBooks(books);
+}
+
+function filterBooks(){
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  const rows=books.filter(b=>[b.title,b.author,b.category,b.description].join(' ').toLowerCase().includes(q));
+  renderBooks(rows);
+}
+
+function category(c){
+  document.getElementById('search').value=c;
+  filterBooks();
+  toast('Showing books matching '+c);
+}
+
+function navTo(n){
+  document.querySelectorAll('.nav').forEach(b=>b.classList.remove('active'));
+  if(window.event?.currentTarget)window.event.currentTarget.classList.add('active');
+  if(n==='Account'){
+    openAuth();
+  }else if(n==='My Books'){
+    if(!currentUser){openAuth();return}
+    const mine=books.filter(b=>b.seller_id===currentUser.id);
+    renderBooks(mine);
+    toast('Showing your listings');
+  }else if(n==='Category'){
+    document.querySelector('.categories').scrollIntoView({behavior:'smooth'});
+  }else if(n==='Home'){
+    loadBooks();
+  }
+}
+
+async function addBook(){
+  if(!currentUser){toast('Please log in first.');return}
+  const title=document.getElementById('newTitle').value.trim(),price=Number(document.getElementById('newPrice').value);
+  if(!title||!price||price<=0){toast('Enter book name and a valid price.');return}
+  let image_url=null;
+  const file=document.getElementById('newPhoto').files[0];
+  if(file){
+    if(file.size>5*1024*1024){toast('Image must be 5 MB or smaller.');return}
+    const ext=file.name.split('.').pop().toLowerCase(),path=`${currentUser.id}/${Date.now()}.${ext}`;
+    const {error:upErr}=await db.storage.from('book-images').upload(path,file,{contentType:file.type,upsert:false});
+    if(upErr){toast('Photo upload failed: '+upErr.message);return}
+    image_url=db.storage.from('book-images').getPublicUrl(path).data.publicUrl;
+  }
+  const row={
+    title,
+    author:document.getElementById('newAuthor').value.trim()||null,
+    category:document.getElementById('newCategory').value.trim()||null,
+    book_condition:document.getElementById('newCondition').value,
+    price,
+    description:document.getElementById('newDescription').value.trim()||null,
+    image_url,
+    seller_id:currentUser.id
+  };
+  const {error}=await db.from('books').insert(row);
+  if(error){toast('Could not publish: '+error.message);return}
+  closeSell();
+  document.querySelectorAll('#sellModal input').forEach(x=>x.value='');
+  await loadBooks();
+  toast('Your book is now listed!');
+}
+
 db.auth.onAuthStateChange((event,session)=>{
   currentUser=session?.user||null;
-  if(event==='SIGNED_IN'){
-    closeAuth();
-  }
+  if(event==='SIGNED_IN'){closeAuth();}
 });
+
 refreshUser().then(loadBooks);
 </script>
-</body>
-</html>
