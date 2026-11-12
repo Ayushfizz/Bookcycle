@@ -66,7 +66,12 @@ main{padding:8px 18px 24px}
 </header>
 <main>
  <section>
-  <div class="section-head"><div><div class="heading">Your nearby books</div><div class="section-sub">Good reads, closer to you</div></div><button class="location" onclick="toast('Nearby distance is not enabled yet. Showing all available books.')">⌖ Update location</button></div>
+  <div class="section-head"><div><div class="heading">Your nearby books</div><div class="section-sub">Good reads, closer to you</div></div><div class="location-controls">
+  <div class="location-controls">
+    <input id="areaInput" type="text" placeholder="Enter your area..." />
+  <button class="location" onclick="searchByArea()">Search Area</button>
+  <button class="location" onclick="useMyLocation()">📍 Use My Location</button>
+</div>
   <div class="nearby" id="booklist"><p class="section-sub">Loading books…</p></div>
  </section>
  <section>
@@ -94,7 +99,9 @@ main{padding:8px 18px 24px}
  <button class="nav" onclick="navTo('Account')"><span class="ico">♙</span>Account</button>
 </nav>
 </div>
-<div class="modal" id="sellModal" onclick="if(event.target===this)closeSell()"><div class="sheet"><h2>List a book for sale</h2><input id="newTitle" placeholder="Book name" required><input id="newAuthor" placeholder="Author (optional)"><input id="newCategory" placeholder="Subject / Class / Exam"><input id="newPrice" type="number" min="1" placeholder="Your price (₹)" required><select id="newCondition"><option>Like new</option><option>Very good</option><option>Good</option><option>Fair</option></select><input id="newDescription" placeholder="Description (optional)"><input id="newPhoto" type="file" accept="image/jpeg,image/png,image/webp"><button class="primary" onclick="addBook()">Publish listing</button></div></div>
+<div class="modal" id="sellModal" onclick="if(event.target===this)closeSell()"><div class="sheet"><h2>List a book for sale</h2><input id="newTitle" placeholder="Book name" required><input id="newAuthor" placeholder="Author (optional)"><input id="newCategory" placeholder="Subject / Class / Exam"><input id="newPrice" type="number" min="1" placeholder="Your price (₹)" required><select id="newCondition"><option>Like new</option><option>Very good</option><option>Good</option><option>Fair</option></select><input id="newDescription" placeholder="Description (optional)"><input id="newArea" type="text" placeholder="Your area / locality (e.g. Rohini, Delhi)">
+<button type="button" class="location" onclick="getSellerLocation()">📍 Use My Location</button>
+<p id="sellerLocationStatus" class="section-sub">Location is optional. Your exact location will not be displayed.</p><input id="newPhoto" type="file" accept="image/jpeg,image/png,image/webp"><button class="primary" onclick="addBook()">Publish listing</button></div></div>
 <div class="modal" id="authModal" onclick="if(event.target===this)closeAuth()"><div class="sheet"><h2>BookCycle account</h2><input id="authEmail" type="email" placeholder="Email address"><input id="authPassword" type="password" placeholder="Password (minimum 6 characters)"><button class="primary" onclick="login()">Log in</button><button class="primary" style="background:var(--gold)" onclick="signup()">Create account</button></div></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -132,10 +139,115 @@ async function deleteBook(id){
   await loadBooks();
 }
   async function loadBooks(){const {data,error}=await db.from('books').select('*').order('created_at',{ascending:false});if(error){toast('Could not load books: '+error.message);document.getElementById('booklist').innerHTML='<p class="section-sub">Could not load listings. Please check database permissions.</p>';return}books=data||[];renderBooks(books)}
-function filterBooks(){const q=document.getElementById('search').value.toLowerCase().trim();const rows=books.filter(b=>[b.title,b.author,b.category,b.description].join(' ').toLowerCase().includes(q));renderBooks(rows)}
+let sellerLatitude = null;
+let sellerLongitude = null;
+
+let nearbyLatitude = null;
+let nearbyLongitude = null;
+let nearbyArea = '';
+function getSellerLocation(){
+  if(!navigator.geolocation){
+    toast('Location is not supported by your browser.');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(position=>{
+    sellerLatitude=Number(position.coords.latitude.toFixed(2));
+    sellerLongitude=Number(position.coords.longitude.toFixed(2));
+
+    document.getElementById('sellerLocationStatus').textContent=
+      'Approximate location detected. Enter your area name above.';
+
+    toast('Location detected successfully!');
+  },()=>{
+    toast('Location permission denied or unavailable.');
+  });
+}
+
+function useMyLocation(){
+  if(!navigator.geolocation){
+    toast('Location is not supported by your browser.');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(position=>{
+    nearbyLatitude=Number(position.coords.latitude.toFixed(2));
+    nearbyLongitude=Number(position.coords.longitude.toFixed(2));
+    nearbyArea='';
+    filterBooks();
+    toast('Nearby location updated!');
+  },()=>{
+    toast('Please allow location access in your browser.');
+  });
+}
+
+function searchByArea(){
+  const area=document.getElementById('areaInput').value.trim();
+
+  if(!area){
+    toast('Please enter an area name.');
+    return;
+  }
+
+  nearbyArea=area.toLowerCase();
+  nearbyLatitude=null;
+  nearbyLongitude=null;
+  filterBooks();
+}  
+  function filterBooks(){
+  const q=document.getElementById('search').value.toLowerCase().trim();
+
+  const rows=books.filter(b=>{
+    const matchesSearch=[b.title,b.author,b.category,b.description]
+      .join(' ').toLowerCase().includes(q);
+
+    let matchesLocation=true;
+
+    if(nearbyArea){
+      matchesLocation=(b.area||'').toLowerCase().includes(nearbyArea);
+    }
+
+    if(nearbyLatitude!==null && nearbyLongitude!==null){
+      if(b.latitude==null || b.longitude==null){
+        matchesLocation=false;
+      }else{
+        const R=6371;
+        const rad=x=>x*Math.PI/180;
+        const dLat=rad(Number(b.latitude)-nearbyLatitude);
+        const dLon=rad(Number(b.longitude)-nearbyLongitude);
+        const a=Math.sin(dLat/2)**2+
+          Math.cos(rad(nearbyLatitude))*
+          Math.cos(rad(Number(b.latitude)))*Math.sin(dLon/2)**2;
+        const distance=2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+        matchesLocation=distance<=5;
+      }
+    }
+
+    return matchesSearch && matchesLocation;
+  });
+
+  renderBooks(rows);
+}
 function category(c){document.getElementById('search').value=c;filterBooks();toast('Showing books matching '+c)}
 function navTo(n){document.querySelectorAll('.nav').forEach(b=>b.classList.remove('active'));if(window.event?.currentTarget)window.event.currentTarget.classList.add('active');if(n==='Account'){openAuth()}else if(n==='My Books'){if(!currentUser){openAuth();return}const mine=books.filter(b=>b.seller_id===currentUser.id);renderBooks(mine);toast('Showing your listings')}else if(n==='Category'){document.querySelector('.categories').scrollIntoView({behavior:'smooth'})}else if(n==='Home'){loadBooks()}}
-async function addBook(){if(!currentUser){toast('Please log in first.');return}const title=document.getElementById('newTitle').value.trim(),price=Number(document.getElementById('newPrice').value);if(!title||!price||price<=0){toast('Enter book name and a valid price.');return}let image_url=null;const file=document.getElementById('newPhoto').files[0];if(file){if(file.size>5*1024*1024){toast('Image must be 5 MB or smaller.');return}const ext=file.name.split('.').pop().toLowerCase(),path=`${currentUser.id}/${Date.now()}.${ext}`;const {error:upErr}=await db.storage.from('book-images').upload(path,file,{contentType:file.type,upsert:false});if(upErr){toast('Photo upload failed: '+upErr.message);return}image_url=db.storage.from('book-images').getPublicUrl(path).data.publicUrl}const row={title,author:document.getElementById('newAuthor').value.trim()||null,category:document.getElementById('newCategory').value.trim()||null,book_condition:document.getElementById('newCondition').value,price,description:document.getElementById('newDescription').value.trim()||null,image_url,seller_id:currentUser.id};const {error}=await db.from('books').insert(row);if(error){toast('Could not publish: '+error.message);return}closeSell();document.querySelectorAll('#sellModal input').forEach(x=>x.value='');await loadBooks();toast('Your book is now listed!')}
+async function addBook(){if(!currentUser){toast('Please log in first.');return}const title=document.getElementById('newTitle').value.trim(),price=Number(document.getElementById('newPrice').value);if(!title||!price||price<=0){toast('Enter book name and a valid price.');return}let image_url=null;const file=document.getElementById('newPhoto').files[0];if(file){if(file.size>5*1024*1024){toast('Image must be 5 MB or smaller.');return}const ext=file.name.split('.').pop().toLowerCase(),path=`${currentUser.id}/${Date.now()}.${ext}`;const {error:upErr}=await db.storage.from('book-images').upload(path,file,{contentType:file.type,upsert:false});if(upErr){toast('Photo upload failed: '+upErr.message);return}image_url=db.storage.from('book-images').getPublicUrl(path).data.publicUrl}const row={
+  title,
+  author:document.getElementById('newAuthor').value.trim()||null,
+  category:document.getElementById('newCategory').value.trim()||null,
+  book_condition:document.getElementById('newCondition').value,
+  price,
+  description:document.getElementById('newDescription').value.trim()||null,
+  image_url,
+  seller_id:currentUser.id,
+  area:document.getElementById('newArea').value.trim()||null,
+  latitude:sellerLatitude,
+  longitude:sellerLongitude
+};const {error}=await db.from('books').insert(row);if(error){toast('Could not publish: '+error.message);return}closeSell();
+document.querySelectorAll('#sellModal input').forEach(x=>x.value='');
+sellerLatitude=null;
+sellerLongitude=null;
+document.getElementById('sellerLocationStatus').textContent='Location is optional. Your exact location will not be displayed.';
+await loadBooks();toast('Your book is now listed!')}
 db.auth.onAuthStateChange((event,session)=>{
   currentUser=session?.user||null;
   if(event==='SIGNED_IN'){
