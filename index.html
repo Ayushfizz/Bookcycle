@@ -185,6 +185,10 @@ db.auth.onAuthStateChange((event,session)=>{
   currentUser=session?.user||null;
   if(event==='SIGNED_IN'){closeAuth();}
 });
+<div id="booklist"></div>
+<div id="recentList"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  refreshUser().then(loadBooks);
 
-refreshUser().then(loadBooks);
 </script>
