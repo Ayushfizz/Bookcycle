@@ -146,3 +146,21 @@ refreshUser().then(loadBooks);
 </script>
 </body>
 </html>
+function filterBooks() {
+  const query = document.getElementById('search').value.toLowerCase().trim();
+  
+  if (!query) {
+    renderBooks(books); // Show all books if search is empty
+    return;
+  }
+
+  // Filter through your stored books array
+  const filtered = books.filter(b => 
+    (b.title && b.title.toLowerCase().includes(query)) ||
+    (b.author && b.author.toLowerCase().includes(query)) ||
+    (b.category && b.category.toLowerCase().includes(query)) ||
+    (b.description && b.description.toLowerCase().includes(query))
+  );
+
+  renderBooks(filtered);
+}
