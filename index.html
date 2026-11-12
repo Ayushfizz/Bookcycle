@@ -112,8 +112,51 @@ function closeSell(){document.getElementById('sellModal').classList.remove('show
 async function refreshUser(){const {data}=await db.auth.getSession();currentUser=data.session?.user||null;}
 async function login(){const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||!password){toast('Enter email and password.');return}const {error}=await db.auth.signInWithPassword({email,password});if(error){toast(error.message);return}await refreshUser();closeAuth();toast('Logged in successfully.')}
 async function signup(){const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||password.length<6){toast('Enter email and a password of at least 6 characters.');return}const {error}=await db.auth.signUp({email,password,options:{emailRedirectTo:'https://ayushfizz.github.io/Bookcycle/'}});if(error){toast(error.message);return}toast('Account created. Check your email if confirmation is required.')}
-function renderBooks(rows){const list=document.getElementById('booklist'),recent=document.getElementById('recentList');list.innerHTML='';recent.innerHTML='';if(!rows.length){list.innerHTML='<p class="section-sub">No books listed yet. Be the first to sell one!</p>';recent.innerHTML='<div class="mini"><div class="miniart">📚</div><div><b>No listings yet</b><small>New books will appear here</small></div></div>';return}rows.forEach((b,i)=>{const card=document.createElement('article');card.className='book';card.dataset.name=[b.title,b.author,b.category,b.description].join(' ').toLowerCase();const cover=b.image_url?`<img src="${safe(b.image_url)}" alt="${safe(b.title)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<div class="art">📖</div>`;card.innerHTML=`<div class="cover" style="background:linear-gradient(145deg,#b68c45,#425a40)">${cover}<button class="heart" onclick="fav(this)">♡</button><div class="booktitle">${safe(b.title)}</div></div><div class="bookmeta"><span class="price">₹${Number(b.price).toLocaleString('en-IN')}</span><span class="distance">${safe(b.book_condition||'Used')}</span></div><div class="bookname">${safe(b.author||b.category||'Educational book')}</div>`;
+function renderBooks(rows){
+  const list = document.getElementById('booklist'), recent = document.getElementById('recentList');
+  list.innerHTML = '';
+  recent.innerHTML = '';
+  
+  if(!rows.length){
+    const query = document.getElementById('search').value.trim();
+    const msg = query ? `No books found matching "${safe(query)}".` : 'No books listed yet. Be the first to sell one!';
+    list.innerHTML = `<p class="section-sub">${msg}</p>`;
+    
+    if(!query){
+      recent.innerHTML = '<div class="mini"><div class="miniart">📚</div><div><b>No listings yet</b><small>New books will appear here</small></div></div>';
+    }
+    return;
+  }
 
+  rows.forEach((b, i) => {
+    const card = document.createElement('article');
+    card.className = 'book';
+    card.dataset.name = [b.title, b.author, b.category, b.description].join(' ').toLowerCase();
+    
+    const cover = b.image_url ? 
+      `<img src="${safe(b.image_url)}" alt="${safe(b.title)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` : 
+      `<div class="art">📖</div>`;
+      
+    card.innerHTML = `<div class="cover" style="background:linear-gradient(145deg,#b68c45,#425a40)">${cover}<button class="heart" onclick="fav(this)">♡</button><div class="booktitle">${safe(b.title)}</div></div><div class="bookmeta"><span class="price">₹${Number(b.price).toLocaleString('en-IN')}</span><span class="distance">${safe(b.book_condition || 'Used')}</span></div><div class="bookname">${safe(b.author || b.category || 'Educational book')}</div>`;
+    
+    if(currentUser && currentUser.id === b.seller_id){
+      const del = document.createElement('button');
+      del.textContent = 'Delete Book';
+      del.style.cssText = 'margin:10px;padding:8px 14px;background:#9b3434;color:white;border:0;border-radius:8px;cursor:pointer;';
+      del.onclick = () => deleteBook(b.id);
+      card.appendChild(del);
+    }
+    
+    list.appendChild(card);
+    
+    if(i < 4){
+      const mini = document.createElement('div');
+      mini.className = 'mini';
+      mini.innerHTML = `<div class="miniart">📘</div><div><b>${safe(b.title)}</b><small>${safe(b.category || 'Book')} · ₹${Number(b.price).toLocaleString('en-IN')}</small></div>`;
+      recent.appendChild(mini);
+    }
+  });
+}
 if(currentUser && currentUser.id===b.seller_id){
 const del=document.createElement('button');
 del.textContent='Delete Book';
