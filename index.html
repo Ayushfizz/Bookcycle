@@ -1,197 +1,281 @@
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const SUPABASE_URL='https://movzdlqzpsnytskkotlu.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY='sb_publishable_EDTEEDTZ-Uwq0uV2O_xInA_43QddtW8';
-const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
-
-let currentUser=null, books=[];
-
-function toast(msg){
-  let t=document.getElementById('toast');
-  t.textContent=msg;
-  t.style.display='block';
-  clearTimeout(window.toastTimer);
-  window.toastTimer=setTimeout(()=>t.style.display='none',2800);
-}
-
-function safe(v){
-  return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function fav(btn){
-  btn.textContent=btn.textContent==='♡'?'♥':'♡';
-  btn.style.color=btn.textContent==='♥'?'#b44b3c':'var(--green)';
-}
-
-function openAuth(){document.getElementById('authModal').classList.add('show')}
-function closeAuth(){document.getElementById('authModal').classList.remove('show')}
-
-function openSell(){
-  if(!currentUser){toast('Please log in first to publish a book.');openAuth();return}
-  document.getElementById('sellModal').classList.add('show');
-}
-function closeSell(){document.getElementById('sellModal').classList.remove('show')}
-
-async function refreshUser(){
-  const {data}=await db.auth.getSession();
-  currentUser=data.session?.user||null;
-}
-
-async function login(){
-  const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;
-  if(!email||!password){toast('Enter email and password.');return}
-  const {error}=await db.auth.signInWithPassword({email,password});
-  if(error){toast(error.message);return}
-  await refreshUser();
-  closeAuth();
-  toast('Logged in successfully.');
-}
-
-async function signup(){
-  const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;
-  if(!email||password.length<6){toast('Enter email and a password of at least 6 characters.');return}
-  const {error}=await db.auth.signUp({email,password,options:{emailRedirectTo:'https://ayushfizz.github.io/Bookcycle/'}});
-  if(error){toast(error.message);return}
-  toast('Account created. Check your email if confirmation is required.');
-}
-
-function renderBooks(rows){
-  const list = document.getElementById('booklist'), recent = document.getElementById('recentList');
-  list.innerHTML = '';
-  recent.innerHTML = '';
-  
-  if(!rows.length){
-    const query = document.getElementById('search').value.trim();
-    const msg = query ? `No books found matching "${safe(query)}".` : 'No books listed yet. Be the first to sell one!';
-    list.innerHTML = `<p class="section-sub">${msg}</p>`;
-    
-    if(!query){
-      recent.innerHTML = '<div class="mini"><div class="miniart">📚</div><div><b>No listings yet</b><small>New books will appear here</small></div></div>';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BookCycle — Read. Reuse. Repeat.</title>
+  <style>
+    :root {
+      --primary: #2e7d32;
+      --primary-light: #4caf50;
+      --bg: #f9f9f9;
+      --card-bg: #ffffff;
+      --text: #333333;
+      --border: #e0e0e0;
     }
-    return;
-  }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      padding-bottom: 70px;
+    }
+    header {
+      background: var(--card-bg);
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 15px;
+    }
+    .search-box {
+      width: 100%;
+      padding: 12px 15px;
+      font-size: 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-sizing: border-box;
+    }
+    .book-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 15px;
+    }
+    .book-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .book-card img {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      border-radius: 6px;
+      background: #eee;
+    }
+    .book-title {
+      font-weight: bold;
+      margin: 8px 0 4px 0;
+      font-size: 16px;
+    }
+    .book-price {
+      color: var(--primary);
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      text-align: center;
+    }
+    .btn-danger {
+      background: #d32f2f;
+      margin-top: 5px;
+    }
+    /* Bottom Navigation Bar */
+    .nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0;
+      z-index: 1000;
+    }
+    .nav-item {
+      background: none;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+      color: #666;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    .nav-item.active {
+      color: var(--primary);
+      font-weight: bold;
+    }
+    /* Toast Notification */
+    #toast {
+      visibility: hidden;
+      min-width: 250px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 4px;
+      padding: 12px;
+      position: fixed;
+      z-index: 2000;
+      left: 50%;
+      bottom: 80px;
+      transform: translateX(-50%);
+    }
+    #toast.show {
+      visibility: visible;
+    }
+  </style>
+</head>
+<body>
 
-  rows.forEach((b, i) => {
-    const card = document.createElement('article');
-    card.className = 'book';
-    card.dataset.name = [b.title, b.author, b.category, b.description].join(' ').toLowerCase();
+  <header>
+    <div class="logo">📚 BookCycle</div>
+    <div id="authStatus"><button class="btn" onclick="openAuth()">Login</button></div>
+  </header>
+
+  <div class="container">
+    <!-- Corrected Search IDs -->
+    <input type="text" id="searchInput" class="search-box" placeholder="Search books, authors or exams..." oninput="handleSearch(event)">
     
-    const cover = b.image_url ? 
-      `<img src="${safe(b.image_url)}" alt="${safe(b.title)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` : 
-      `<div class="art">📖</div>`;
+    <h2>Available Books</h2>
+    <div id="booklist" class="book-grid">Loading books...</div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="nav-bar">
+    <button class="nav-item active" onclick="navigate('Home')"><span>⌂</span>Home</button>
+    <button class="nav-item" onclick="navigate('My Books')"><span>▤</span>My Books</button>
+    <button class="nav-item" onclick="navigate('Sell Now')"><span>＋</span>Sell Now</button>
+    <button class="nav-item" onclick="navigate('Category')"><span>▦</span>Category</button>
+    <button class="nav-item" onclick="navigate('Account')"><span>♙</span>Account</button>
+  </nav>
+
+  <div id="toast"></div>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Supabase Configuration
+    const SUPABASE_URL = 'https://your-supabase-url.supabase.co'; // Apna URL daalein agar change kiya ho
+    const SUPABASE_KEY = 'your-supabase-key'; // Apna Key daalein
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentUser = null;
+    let allBooks = [];
+
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.className = "show";
+      setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+    }
+
+    async function loadBooks() {
+      const container = document.getElementById('booklist');
+      container.innerHTML = "Loading books...";
       
-    card.innerHTML = `<div class="cover" style="background:linear-gradient(145deg,#b68c45,#425a40)">${cover}<button class="heart" onclick="fav(this)">♡</button><div class="booktitle">${safe(b.title)}</div></div><div class="bookmeta"><span class="price">₹${Number(b.price).toLocaleString('en-IN')}</span><span class="distance">${safe(b.book_condition || 'Used')}</span></div><div class="bookname">${safe(b.author || b.category || 'Educational book')}</div>`;
-    
-    if(currentUser && currentUser.id === b.seller_id){
-      const del = document.createElement('button');
-      del.textContent = 'Delete Book';
-      del.style.cssText = 'margin:10px;padding:8px 14px;background:#9b3434;color:white;border:0;border-radius:8px;cursor:pointer;';
-      del.onclick = () => deleteBook(b.id);
-      card.appendChild(del);
+      const { data, error } = await db.from('books').select('*').order('created_at', { ascending: false });
+      
+      if (error) {
+        container.innerHTML = "Error loading books.";
+        return;
+      }
+      
+      allBooks = data || [];
+      renderBooks(allBooks);
     }
-    
-    list.appendChild(card);
-    
-    if(i < 4){
-      const mini = document.createElement('div');
-      mini.className = 'mini';
-      mini.innerHTML = `<div class="miniart">📘</div><div><b>${safe(b.title)}</b><small>${safe(b.category || 'Book')} · ₹${Number(b.price).toLocaleString('en-IN')}</small></div>`;
-      recent.appendChild(mini);
+
+    function renderBooks(books) {
+      const container = document.getElementById('booklist');
+      if (!books.length) {
+        container.innerHTML = "<p>No books found.</p>";
+        return;
+      }
+      
+      container.innerHTML = books.map(b => `
+        <div class="book-card">
+          <img src="${b.image_url || 'https://via.placeholder.com/150'}" alt="${b.title}">
+          <div class="book-title">${b.title}</div>
+          <div class="book-price">₹${b.price}</div>
+          <div>${b.description || ''}</div>
+          ${currentUser && currentUser.id === b.seller_id ? `<button class="btn btn-danger" onclick="deleteBook('${b.id}')">Delete Book</button>` : ''}
+        </div>
+      `).join('');
     }
-  });
-}
 
-async function deleteBook(id){
-  if(!currentUser) return;
-  if(!confirm('Are you sure you want to delete this book?')) return;
-  const {error}=await db.from('books').delete().eq('id',id).eq('seller_id',currentUser.id);
-  if(error){toast('Delete failed: '+error.message);return;}
-  toast('Book deleted successfully');
-  await loadBooks();
-}
+    function handleSearch(e) {
+      const query = e.target.value.toLowerCase();
+      const filtered = allBooks.filter(b => 
+        (b.title && b.title.toLowerCase().includes(query)) ||
+        (b.author && b.author.toLowerCase().includes(query)) ||
+        (b.category && b.category.toLowerCase().includes(query))
+      );
+      renderBooks(filtered);
+    }
 
-async function loadBooks(){
-  const {data,error}=await db.from('books').select('*').order('created_at',{ascending:false});
-  if(error){
-    toast('Could not load books: '+error.message);
-    document.getElementById('booklist').innerHTML='<p class="section-sub">Could not load listings. Please check database permissions.</p>';
-    return;
-  }
-  books=data||[];
-  renderBooks(books);
-}
+    async function deleteBook(id) {
+      if (!confirm("Are you sure you want to delete this book?")) return;
+      const { error } = await db.from('books').delete().eq('id', id);
+      if (error) {
+        toast("Failed to delete book.");
+      } else {
+        toast("Book deleted successfully!");
+        loadBooks();
+      }
+    }
 
-function filterBooks(){
-  const q=document.getElementById('search').value.toLowerCase().trim();
-  const rows=books.filter(b=>[b.title,b.author,b.category,b.description].join(' ').toLowerCase().includes(q));
-  renderBooks(rows);
-}
+    function navigate(n) {
+      if (n === 'Home') loadBooks();
+      else if (n === 'Sell Now') {
+        if (!currentUser) { toast("Please log in first."); return; }
+        let title = prompt("Enter Book Title:");
+        let price = Number(prompt("Enter Price (₹):"));
+        if (title && price) {
+          db.from('books').insert([{ title, price, seller_id: currentUser.id }]).then(({error}) => {
+            if(!error) { toast("Book listed!"); loadBooks(); }
+          });
+        }
+      } else if (n === 'My Books') {
+        if (!currentUser) { toast("Please log in first."); return; }
+        const mine = allBooks.filter(b => b.seller_id === currentUser.id);
+        renderBooks(mine);
+        toast("Showing your listings");
+      }
+    }
 
-function category(c){
-  document.getElementById('search').value=c;
-  filterBooks();
-  toast('Showing books matching '+c);
-}
+    async function refreshUser() {
+      const { data: { session } } = await db.auth.getSession();
+      currentUser = session?.user || null;
+      if (currentUser) {
+        document.getElementById('authStatus').innerHTML = `<span style="font-size:14px;">👤 ${currentUser.email}</span>`;
+      }
+    }
 
-function navTo(n){
-  document.querySelectorAll('.nav').forEach(b=>b.classList.remove('active'));
-  if(window.event?.currentTarget)window.event.currentTarget.classList.add('active');
-  if(n==='Account'){
-    openAuth();
-  }else if(n==='My Books'){
-    if(!currentUser){openAuth();return}
-    const mine=books.filter(b=>b.seller_id===currentUser.id);
-    renderBooks(mine);
-    toast('Showing your listings');
-  }else if(n==='Category'){
-    document.querySelector('.categories').scrollIntoView({behavior:'smooth'});
-  }else if(n==='Home'){
-    loadBooks();
-  }
-}
+    db.auth.onAuthStateChange((event, session) => {
+      currentUser = session?.user || null;
+      refreshUser();
+    });
 
-async function addBook(){
-  if(!currentUser){toast('Please log in first.');return}
-  const title=document.getElementById('newTitle').value.trim(),price=Number(document.getElementById('newPrice').value);
-  if(!title||!price||price<=0){toast('Enter book name and a valid price.');return}
-  let image_url=null;
-  const file=document.getElementById('newPhoto').files[0];
-  if(file){
-    if(file.size>5*1024*1024){toast('Image must be 5 MB or smaller.');return}
-    const ext=file.name.split('.').pop().toLowerCase(),path=`${currentUser.id}/${Date.now()}.${ext}`;
-    const {error:upErr}=await db.storage.from('book-images').upload(path,file,{contentType:file.type,upsert:false});
-    if(upErr){toast('Photo upload failed: '+upErr.message);return}
-    image_url=db.storage.from('book-images').getPublicUrl(path).data.publicUrl;
-  }
-  const row={
-    title,
-    author:document.getElementById('newAuthor').value.trim()||null,
-    category:document.getElementById('newCategory').value.trim()||null,
-    book_condition:document.getElementById('newCondition').value,
-    price,
-    description:document.getElementById('newDescription').value.trim()||null,
-    image_url,
-    seller_id:currentUser.id
-  };
-  const {error}=await db.from('books').insert(row);
-  if(error){toast('Could not publish: '+error.message);return}
-  closeSell();
-  document.querySelectorAll('#sellModal input').forEach(x=>x.value='');
-  await loadBooks();
-  toast('Your book is now listed!');
-}
-
-db.auth.onAuthStateChange((event,session)=>{
-  currentUser=session?.user||null;
-  if(event==='SIGNED_IN'){closeAuth();}
-});
-  </script> <!-- CLOSE THE SCRIPT TAG HERE -->
-<div id="booklist"></div>
-<div id="recentList"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  refreshUser().then(loadBooks);
-
-</script>
+    // Initialize on load
+    refreshUser().then(loadBooks);
+  </script>
 </body>
 </html>
