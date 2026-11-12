@@ -172,7 +172,8 @@ async function deleteBook(id){
   await loadBooks();
 }
   async function loadBooks(){const {data,error}=await db.from('books').select('*').order('created_at',{ascending:false});if(error){toast('Could not load books: '+error.message);document.getElementById('booklist').innerHTML='<p class="section-sub">Could not load listings. Please check database permissions.</p>';return}books=data||[];renderBooks(books)}
-let sellerLatitude = null;
+console.log("LOADBOOKS FUNCTION STARTED");
+  let sellerLatitude = null;
 let sellerLongitude = null;
 
 let nearbyLatitude = null;
