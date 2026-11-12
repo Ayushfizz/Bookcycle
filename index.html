@@ -283,9 +283,18 @@ document.getElementById('sellerLocationStatus').textContent='Location is optiona
 await loadBooks();toast('Your book is now listed!')}
 db.auth.onAuthStateChange((event,session)=>{
   currentUser=session?.user||null;
+
+  if(!currentUser){
+    isAdmin=false;
+  }
+
   if(event==='SIGNED_IN'){
     closeAuth();
   }
+
+  setTimeout(()=>{
+    refreshUser().then(loadBooks);
+  },0);
 });
 refreshUser().then(loadBooks);
 </body>
